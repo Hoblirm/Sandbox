@@ -1,0 +1,4 @@
+#!/bin/sh
+
+./sem_proc1&
+./sem_proc2

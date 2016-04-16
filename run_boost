@@ -1,0 +1,4 @@
+#!/bin/sh
+
+./boost_proc1&
+./boost_proc2
