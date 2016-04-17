@@ -11,6 +11,7 @@
 using namespace boost::interprocess;
 
 #include "timer.h"
+#include <stdlib.h>     /* atoi */
 
 #ifdef SEMPROC
 binary_semaphore m("/rmhregion");
@@ -20,8 +21,13 @@ binary_semaphore m("/rmhregion");
 interprocess_pmutex m("/rmhmutex");
 #endif
 
-int main() {
+int main(int argc, char** argv) {
 	Timer t;
+
+	int proc_num = 2;
+	if (argc == 2) {
+		proc_num = atoi(argv[1]);
+	}
 
 	//Remove shared memory on destruction
 	struct shm_remove {
@@ -74,6 +80,9 @@ int main() {
 	}
 	t.stop();
 
+	std::cout << "Process" << proc_num << " finished. Took "
+			<< t.usAvg() / 1000000 << "sec." << std::endl;
+
 	//Wait until the other processes to end
 	do {
 		scoped_lock < interprocess_mutex > lock(data->mutex);
@@ -85,6 +94,6 @@ int main() {
 			data->threads_ready.wait(lock);
 		}
 	} while (false);
-	std::cout << "Client process finished. Took " << t.usAvg()/1000000 << "sec." << std::endl;
+
 	return 0;
 }

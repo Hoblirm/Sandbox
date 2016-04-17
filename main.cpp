@@ -81,6 +81,9 @@ int main() {
 		}
 		t.stop();
 
+		std::cout << "Process1 finished. Took " << t.usAvg() / 1000000 << "sec."
+				<< std::endl;
+
 		//Wait until the other processes to end
 		do {
 			scoped_lock < interprocess_mutex > lock(data->mutex);
@@ -101,8 +104,7 @@ int main() {
 					<< ".  Processes were NOT properly synchronized."
 					<< std::endl;
 		}
-		std::cout << "Process1 finished. Took " << t.usAvg()/1000000 << "sec."
-				<< std::endl;
+
 	} catch (interprocess_exception &ex) {
 		std::cout << ex.what() << std::endl;
 		return 1;

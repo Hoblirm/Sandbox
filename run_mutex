@@ -2,11 +2,11 @@
 
 ./mutex_proc1&
 sleep 1
-./mutex_proc2&
-./mutex_proc2&
-./mutex_proc2&
-./mutex_proc2&
-./mutex_proc2&
-./mutex_proc2&
-./mutex_proc2
+./mutex_proc2 2&
+./mutex_proc2 3&
+./mutex_proc2 4&
+./mutex_proc2 5&
+./mutex_proc2 6&
+./mutex_proc2 7&
+./mutex_proc2 8
 

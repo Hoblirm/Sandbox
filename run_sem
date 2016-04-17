@@ -2,10 +2,10 @@
 
 ./sem_proc1&
 sleep 1
-./sem_proc2&
-./sem_proc2&
-./sem_proc2&
-./sem_proc2&
-./sem_proc2&
-./sem_proc2&
-./sem_proc2
+./sem_proc2 2&
+./sem_proc2 3&
+./sem_proc2 4&
+./sem_proc2 5&
+./sem_proc2 6&
+./sem_proc2 7&
+./sem_proc2 8

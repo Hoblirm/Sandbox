@@ -2,10 +2,10 @@
 
 ./boost_proc1&
 sleep 1
-./boost_proc2&
-./boost_proc2&
-./boost_proc2&
-./boost_proc2&
-./boost_proc2&
-./boost_proc2&
-./boost_proc2
+./boost_proc2 2&
+./boost_proc2 3&
+./boost_proc2 4&
+./boost_proc2 5&
+./boost_proc2 6&
+./boost_proc2 7&
+./boost_proc2 8
