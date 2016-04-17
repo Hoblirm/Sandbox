@@ -5,13 +5,19 @@
 #include <iostream>
 #include <cstdio>
 
-#include "inter_mutex.h"
-#include "better_mutex.h"
+#include "binary_semaphore.h"
+#include "interprocess_pmutex.h"
 using namespace boost::interprocess;
 
 #include "timer.h"
 
-inter_mutex m("/rmhregion");
+#ifdef SEMPROC
+binary_semaphore m("/rmhregion");
+#endif
+
+#ifdef MUTEXPROC
+interprocess_pmutex m("/rmhmutex");
+#endif
 
 int main() {
 
@@ -29,7 +35,7 @@ int main() {
 		} remover;
 
 		//Create a shared memory object.
-		shared_memory_object shm(create_only               //only create
+		shared_memory_object shm(open_or_create               //only create
 				, "MySharedMemory"          //name
 				, read_write   //read-write mode
 				);
@@ -48,34 +54,46 @@ int main() {
 		//Construct the shared structure in memory
 		shared_object * data = new (addr) shared_object;
 
-		std::cout << "Process1: Waiting for process 2 to start..." << std::endl;
-		while (1) {
-			scoped_lock<interprocess_mutex> lock(data->mutex);
-			if (data->ready_b)
-				break;
-			usleep(10000);
-		}
-		data->mutex.lock();
-		data->ready_a = true;
-		data->mutex.unlock();
+		do {
+			scoped_lock < interprocess_mutex > lock(data->mutex);
+			++data->number_of_waiting_threads;
+			if (data->number_of_waiting_threads == NUM_OF_PROCS) {
+				data->number_of_waiting_threads = 0;
+				data->threads_ready.notify_all();
+			} else {
+				data->threads_ready.wait(lock);
+			}
+		} while (false);
+
 		t.start();
 		for (int i = 0; i < TRIALS; ++i) {
+#ifdef BOOSTPROC
+			data->mutex.lock();
+#else
 			m.lock();
-			//data->mutex.lock();
+#endif
 			++data->shared_int;
-			//data->mutex.unlock();
+#ifdef BOOSTPROC
+			data->mutex.unlock();
+#else
 			m.unlock();
+#endif
 		}
 		t.stop();
-		data->end_a = true;
 
-		//Wait until the other process ends
-		while (1) {
-			scoped_lock<interprocess_mutex> lock(data->mutex);
-			if (data->end_b)
-				break;
-		}
-		if (data->shared_int == (TRIALS * 2)) {
+		//Wait until the other processes to end
+		do {
+			scoped_lock < interprocess_mutex > lock(data->mutex);
+			++data->number_of_waiting_threads;
+			if (data->number_of_waiting_threads == NUM_OF_PROCS) {
+				data->number_of_waiting_threads = 0;
+				data->threads_ready.notify_all();
+			} else {
+				data->threads_ready.wait(lock);
+			}
+		} while (false);
+
+		if (data->shared_int == (TRIALS * NUM_OF_PROCS)) {
 			std::cout << "Shared int is " << data->shared_int
 					<< ".  Processes were properly synchronized." << std::endl;
 		} else {
@@ -83,7 +101,7 @@ int main() {
 					<< ".  Processes were NOT properly synchronized."
 					<< std::endl;
 		}
-		std::cout << "Process1 finished. Took " << t.usAvg() << "us."
+		std::cout << "Process1 finished. Took " << t.usAvg()/1000000 << "sec."
 				<< std::endl;
 	} catch (interprocess_exception &ex) {
 		std::cout << ex.what() << std::endl;

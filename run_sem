@@ -1,4 +1,11 @@
 #!/bin/sh
 
 ./sem_proc1&
+sleep 1
+./sem_proc2&
+./sem_proc2&
+./sem_proc2&
+./sem_proc2&
+./sem_proc2&
+./sem_proc2&
 ./sem_proc2

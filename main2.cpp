@@ -5,14 +5,20 @@
 #include <iostream>
 #include <cstdio>
 
-#include "inter_mutex.h"
-#include "better_mutex.h"
+#include "binary_semaphore.h"
+#include "interprocess_pmutex.h"
 
 using namespace boost::interprocess;
 
 #include "timer.h"
 
-inter_mutex m("/rmhregion");
+#ifdef SEMPROC
+binary_semaphore m("/rmhregion");
+#endif
+
+#ifdef MUTEXPROC
+interprocess_pmutex m("/rmhmutex");
+#endif
 
 int main() {
 	Timer t;
@@ -25,7 +31,7 @@ int main() {
 	} remover;
 
 	//Open the shared memory object.
-	shared_memory_object shm(open_only                    //only create
+	shared_memory_object shm(open_or_create                    //only create
 			, "MySharedMemory"              //name
 			, read_write  //read-write mode
 			);
@@ -40,31 +46,45 @@ int main() {
 
 	//Construct the shared structure in memory
 	shared_object * data = static_cast<shared_object*>(addr);
-	data->mutex.lock();
-	data->ready_b = true;
-	data->mutex.unlock();
-	while (1) {
-		scoped_lock<interprocess_mutex> lock(data->mutex);
-		if (data->ready_a)
-			break;
-	}
+
+	do {
+		scoped_lock < interprocess_mutex > lock(data->mutex);
+		++data->number_of_waiting_threads;
+		if (data->number_of_waiting_threads == NUM_OF_PROCS) {
+			data->number_of_waiting_threads = 0;
+			data->threads_ready.notify_all();
+		} else {
+			data->threads_ready.wait(lock);
+		}
+	} while (false);
+
 	t.start();
 	for (int i = 0; i < TRIALS; ++i) {
+#ifdef BOOSTPROC
+		data->mutex.lock();
+#else
 		m.lock();
-		//data->mutex.lock();
+#endif
 		++data->shared_int;
-		//data->mutex.unlock();
+#ifdef BOOSTPROC
+		data->mutex.unlock();
+#else
 		m.unlock();
+#endif
 	}
 	t.stop();
-	data->end_b = true;
 
-	//Wait until the other process ends
-	while (1) {
+	//Wait until the other processes to end
+	do {
 		scoped_lock < interprocess_mutex > lock(data->mutex);
-		if (data->end_a)
-			break;
-	}
-	std::cout << "Process2 finished. Took " << t.usAvg() << "us." << std::endl;
+		++data->number_of_waiting_threads;
+		if (data->number_of_waiting_threads == NUM_OF_PROCS) {
+			data->number_of_waiting_threads = 0;
+			data->threads_ready.notify_all();
+		} else {
+			data->threads_ready.wait(lock);
+		}
+	} while (false);
+	std::cout << "Client process finished. Took " << t.usAvg()/1000000 << "sec." << std::endl;
 	return 0;
 }

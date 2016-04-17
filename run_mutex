@@ -1,4 +1,12 @@
 #!/bin/sh
 
 ./mutex_proc1&
+sleep 1
+./mutex_proc2&
+./mutex_proc2&
+./mutex_proc2&
+./mutex_proc2&
+./mutex_proc2&
+./mutex_proc2&
 ./mutex_proc2
+
