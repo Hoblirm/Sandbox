@@ -17,7 +17,7 @@ class Timer {
     }
 
     inline void start() {
-       clock_gettime(CLOCK_BOOTTIME,&m_start);
+       clock_gettime(CLOCK_MONOTONIC,&m_start);
     }
 
     inline void stop() {
