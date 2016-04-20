@@ -10,6 +10,7 @@
 using namespace boost::interprocess;
 
 #include "timer.h"
+#include <stdlib.h>     /* atoi */
 
 #ifdef SEMPROC
 binary_semaphore m("/rmhregion");
@@ -19,16 +20,18 @@ binary_semaphore m("/rmhregion");
 interprocess_pmutex m("/rmhmutex");
 #endif
 
-int main() {
+int main(int argc, char** argv) {
 
 	try {
 		Timer t;
 
+		int proc_num = 1;
+		if (argc == 2) {
+			proc_num = atoi(argv[1]);
+		}
+
 		//Remove shared memory on construction and destruction
 		struct shm_remove {
-			shm_remove() {
-				shared_memory_object::remove("MySharedMemory");
-			}
 			~shm_remove() {
 				shared_memory_object::remove("MySharedMemory");
 			}
@@ -49,10 +52,12 @@ int main() {
 				);
 
 		//Get the address of the mapped region
-		void * addr = region.get_address();
+		shared_object * data = (shared_object *)region.get_address();
 
 		//Construct the shared structure in memory
-		shared_object * data = new (addr) shared_object;
+		if (proc_num == 1) {
+			new ((void*) data) shared_object;
+		}
 
 		do {
 			scoped_lock < interprocess_mutex > lock(data->mutex);
@@ -81,10 +86,10 @@ int main() {
 		}
 		t.stop();
 
-		std::cout << "Process1 finished. Took " << t.usAvg() / 1000000 << "sec."
-				<< std::endl;
+		std::cout << "Process" << proc_num << " finished. Took "
+				<< t.usAvg() / 1000000 << "sec." << std::endl;
 
-		//Wait until the other processes to end
+		//Wait for the other processes to end
 		do {
 			scoped_lock < interprocess_mutex > lock(data->mutex);
 			++data->number_of_waiting_threads;
@@ -96,15 +101,17 @@ int main() {
 			}
 		} while (false);
 
-		if (data->shared_int == (TRIALS * NUM_OF_PROCS)) {
-			std::cout << "Shared int is " << data->shared_int
-					<< ".  Processes were properly synchronized." << std::endl;
-		} else {
-			std::cout << "Shared int is " << data->shared_int
-					<< ".  Processes were NOT properly synchronized."
-					<< std::endl;
+		if (proc_num == 1) {
+			if (data->shared_int == (TRIALS * NUM_OF_PROCS)) {
+				std::cout << "Shared int is " << data->shared_int
+						<< ".  Processes were properly synchronized."
+						<< std::endl;
+			} else {
+				std::cout << "Shared int is " << data->shared_int
+						<< ".  Processes were NOT properly synchronized."
+						<< std::endl;
+			}
 		}
-
 	} catch (interprocess_exception &ex) {
 		std::cout << ex.what() << std::endl;
 		return 1;
